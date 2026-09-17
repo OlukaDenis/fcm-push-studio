@@ -27,10 +27,11 @@ Built with **NestJS (TypeScript)**, **React (Vite + Tailwind CSS)**, and **SQLit
   - Searchable by target, title, and message ID.
   - One-click **"Clone to Studio"** to restore previous payloads directly into the editor for rapid iteration.
   - Full inspection modal showing raw JSON payload and FCM responses/error codes.
-- **Dynamic Service Account Loading & Git Safety**:
-  - Reads `service-account.json` from the `api/` directory or project root.
-  - `service-account.json` is strictly ignored in `.gitignore`.
-  - UI includes a live status pill and **"Reload"** button to detect credentials without restarting the server.
+- **Dynamic Service Account Upload & Management**:
+  - Upload `service_account.json` via drag-and-drop or paste raw JSON directly in the UI.
+  - Dynamically initializes and switches Firebase projects at runtime without restarting servers.
+  - Active project status card showing Project ID, Client Email, and Disconnect / Replace actions.
+  - Also detects existing local `service-account.json` files if provided on disk.
 - **Modern UI**:
   - Dark and Light mode support with automatic system preference detection and localStorage persistence.
 
@@ -38,18 +39,22 @@ Built with **NestJS (TypeScript)**, **React (Vite + Tailwind CSS)**, and **SQLit
 
 ## 🚀 Getting Started
 
-### 1. Place Your Firebase Service Account
+### 1. Start the Dev Servers
 
-1. Go to the [Firebase Console](https://console.firebase.google.com/) -> **Project Settings** -> **Service accounts**.
-2. Click **Generate new private key** and download the JSON file.
-3. Save or rename the file to:
-   ```text
-   api/service-account.json
-   ```
-   *(A reference template is available at `api/service-account.example.json`)*.
+Run both the API (`localhost:3001`) and Frontend (`localhost:5173`) with:
+```bash
+npm run dev
+```
+
+### 2. Connect Your Firebase Project in the UI
+
+1. Open your browser at **http://localhost:5173**.
+2. Click the **"Upload Service Account"** button on the home screen or the status pill in the top navigation.
+3. Drag and drop your downloaded `service_account.json` or paste its JSON content directly.
+4. The app will validate the keys and connect instantly!
 
 > [!NOTE]
-> `service-account.json` is added to `.gitignore` so your private credentials will never be committed to Git.
+> Uploaded credentials are securely stored locally on your server at `api/service-account.json` (strictly ignored by `.gitignore` so your private keys are never committed).
 
 ---
 

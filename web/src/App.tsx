@@ -4,6 +4,7 @@ import { PushStudio } from './components/push/PushStudio';
 import { TopicManager } from './components/topics/TopicManager';
 import { HistoryView } from './components/history/HistoryView';
 import { ServiceAccountGuideModal } from './components/common/ServiceAccountGuideModal';
+import { ServiceAccountManager } from './components/credentials/ServiceAccountManager';
 import { getFirebaseStatus, reloadFirebase } from './services/api';
 import { FirebaseStatus, SendPushPayload } from './types';
 import {
@@ -15,6 +16,8 @@ import {
   ExternalLink,
   Copy,
   Check,
+  UploadCloud,
+  Key,
 } from 'lucide-react';
 
 export function App() {
@@ -30,6 +33,7 @@ export function App() {
   const [firebaseStatus, setFirebaseStatus] = useState<FirebaseStatus | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [isBannerGuideExpanded, setIsBannerGuideExpanded] = useState(true);
   const [copiedPath, setCopiedPath] = useState(false);
   const [clonedPayload, setClonedPayload] = useState<Partial<SendPushPayload> | undefined>(
@@ -104,13 +108,14 @@ export function App() {
         isLoadingStatus={isLoadingStatus}
         onRefreshStatus={handleReloadCredentials}
         onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenManager={() => setIsManagerOpen(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Service Account Missing Alert Banner & Stepper Guide */}
         {firebaseStatus && !firebaseStatus.connected && (
           <div className="mb-8 p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 shadow-sm animate-fade-in space-y-4">
-            <div className="flex items-start justify-between">
+            <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start space-x-3.5">
                 <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 flex-shrink-0">
                   <AlertTriangle className="w-5 h-5" />
@@ -120,7 +125,7 @@ export function App() {
                     Firebase Credentials Needed for FCM
                   </h3>
                   <p className="text-amber-800/90 dark:text-amber-300/90 text-xs sm:text-sm mt-0.5">
-                    FCM v1 requires a Google Cloud service account key to sign and transmit push notifications.
+                    Upload your service account JSON directly below or paste it to connect instantly.
                   </p>
                 </div>
               </div>
@@ -129,12 +134,22 @@ export function App() {
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
+                  onClick={() => setIsManagerOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-orange-500/20 transition cursor-pointer"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Upload Service Account</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setIsGuideOpen(true)}
                   className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 hover:bg-amber-100/50 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Full Guide</span>
+                  <span>How to Get Key</span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setIsBannerGuideExpanded(!isBannerGuideExpanded)}
@@ -213,10 +228,10 @@ export function App() {
                       4
                     </span>
                     <h5 className="font-semibold text-slate-800 dark:text-slate-200">
-                      Copy into Project
+                      Upload to App
                     </h5>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-snug">
-                      Save or rename the file to <code className="font-mono text-orange-600 dark:text-orange-400">api/service-account.json</code>.
+                      Click the <strong>Upload Service Account</strong> button above to load the file instantly!
                     </p>
                   </div>
                 </div>
@@ -224,34 +239,23 @@ export function App() {
                 {/* File path pill and Verify button */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                      Destination file:
-                    </span>
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/60 text-slate-800 dark:text-slate-200 shadow-sm font-mono text-xs">
-                      <FileCode className="w-3.5 h-3.5 text-amber-500" />
-                      api/service-account.json
-                      <button
-                        type="button"
-                        onClick={copyPath}
-                        className="ml-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                        title="Copy path"
-                      >
-                        {copiedPath ? (
-                          <Check className="w-3 h-3 text-emerald-500" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                      </button>
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsManagerOpen(true)}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-xs shadow-md shadow-orange-500/20 transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <UploadCloud className="w-4 h-4" />
+                      <span>Upload JSON File or Paste Here</span>
+                    </button>
                   </div>
 
                   <button
                     type="button"
                     onClick={handleReloadCredentials}
                     disabled={isLoadingStatus}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-semibold text-xs transition shadow-sm cursor-pointer disabled:opacity-50"
+                    className="px-3.5 py-2 rounded-xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition cursor-pointer disabled:opacity-50"
                   >
-                    {isLoadingStatus ? 'Verifying...' : 'Verify & Reload Credentials'}
+                    {isLoadingStatus ? 'Verifying...' : 'Check Disk for service-account.json'}
                   </button>
                 </div>
               </div>
@@ -276,6 +280,17 @@ export function App() {
         )}
       </main>
 
+      {/* Dynamic Service Account Upload & Connection Manager Modal */}
+      <ServiceAccountManager
+        isOpen={isManagerOpen}
+        onClose={() => setIsManagerOpen(false)}
+        firebaseStatus={firebaseStatus}
+        onStatusUpdated={(newStatus) => {
+          setFirebaseStatus(newStatus);
+        }}
+        onOpenGuide={() => setIsGuideOpen(true)}
+      />
+
       {/* Guide Modal */}
       <ServiceAccountGuideModal
         isOpen={isGuideOpen}
@@ -289,16 +304,25 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
             <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-            <span>FCM Push Testing Platform • NestJS + React + SQLite</span>
+            <span>FCM Push Testing Platform • Dynamic Credentials Mode</span>
           </div>
           <div className="flex items-center space-x-4">
             <button
               type="button"
+              onClick={() => setIsManagerOpen(true)}
+              className="text-orange-600 dark:text-orange-400 font-medium hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Manage Credentials</span>
+            </button>
+            <span>•</span>
+            <button
+              type="button"
               onClick={() => setIsGuideOpen(true)}
-              className="text-orange-600 dark:text-orange-400 font-medium hover:underline flex items-center gap-1"
+              className="text-slate-600 dark:text-slate-400 font-medium hover:underline flex items-center gap-1 cursor-pointer"
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Service Account Setup Guide</span>
+              <span>Setup Guide</span>
             </button>
             <span>•</span>
             <a
@@ -307,7 +331,7 @@ export function App() {
               rel="noreferrer"
               className="hover:text-orange-500 transition"
             >
-              FCM Documentation
+              FCM Docs
             </a>
           </div>
         </div>

@@ -25,6 +25,20 @@ export const reloadFirebase = async (): Promise<FirebaseStatus> => {
   return res.data;
 };
 
+export const uploadFirebaseCredentials = async (
+  serviceAccount: any,
+): Promise<FirebaseStatus> => {
+  const res = await api.post<FirebaseStatus>('/firebase/upload', {
+    serviceAccount,
+  });
+  return res.data;
+};
+
+export const disconnectFirebase = async (): Promise<FirebaseStatus> => {
+  const res = await api.delete<FirebaseStatus>('/firebase/disconnect');
+  return res.data;
+};
+
 export const sendPushNotification = async (
   payload: SendPushPayload,
 ): Promise<SendResult> => {

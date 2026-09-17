@@ -21,6 +21,7 @@ interface NavbarProps {
   isLoadingStatus: boolean;
   onRefreshStatus: () => void;
   onOpenGuide: () => void;
+  onOpenManager: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -32,6 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   isLoadingStatus,
   onRefreshStatus,
   onOpenGuide,
+  onOpenManager,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 glass-panel">
@@ -93,12 +95,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Right Side: Firebase Status & Dark/Light Toggle */}
           <div className="flex items-center space-x-3">
-            {/* Firebase Status Badge */}
+            {/* Firebase Status Badge (Click to manage) */}
             <div className="flex items-center">
               {firebaseStatus?.connected ? (
-                <div
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium"
-                  title={`Project: ${firebaseStatus.projectId}\nAccount: ${firebaseStatus.clientEmail}`}
+                <button
+                  type="button"
+                  onClick={onOpenManager}
+                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition shadow-sm"
+                  title={`Connected to Project: ${firebaseStatus.projectId}\nClick to manage or replace credentials`}
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -108,15 +112,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {firebaseStatus.projectId}
                   </span>
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                </div>
+                </button>
               ) : (
-                <div
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium"
-                  title={firebaseStatus?.error || 'service-account.json not found'}
+                <button
+                  type="button"
+                  onClick={onOpenManager}
+                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/40 transition shadow-sm animate-pulse-subtle"
+                  title="No Service Account Connected - Click to upload or paste JSON"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="hidden sm:inline">No Service Account</span>
-                </div>
+                  <span className="hidden sm:inline font-semibold">Upload Service Account</span>
+                </button>
               )}
 
               {/* Refresh / Reload Service Account button */}
