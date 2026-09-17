@@ -41,6 +41,9 @@ export class NotificationHistory {
   errorMessage?: string;
 
   @Column({ type: 'text', nullable: true })
+  fullPayload?: string; // Complete JSON payload sent to FCM
+
+  @Column({ type: 'text', nullable: true })
   rawResponse?: string;
 
   @CreateDateColumn()

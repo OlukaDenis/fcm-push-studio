@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Smartphone,
   Radio,
@@ -52,11 +52,59 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   );
 
   // Platform overrides
-  const [showPlatformConfig, setShowPlatformConfig] = useState(false);
-  const [androidChannelId, setAndroidChannelId] = useState('default');
-  const [androidPriority, setAndroidPriority] = useState<'high' | 'normal'>('high');
-  const [apnsBadge, setApnsBadge] = useState<number | ''>(1);
-  const [apnsSound, setApnsSound] = useState('default');
+  const [showPlatformConfig, setShowPlatformConfig] = useState(
+    Boolean(initialPayload?.android || initialPayload?.apns),
+  );
+  const [androidChannelId, setAndroidChannelId] = useState(
+    initialPayload?.android?.channelId || 'default',
+  );
+  const [androidSound, setAndroidSound] = useState(
+    initialPayload?.android?.sound || 'default',
+  );
+  const [androidPriority, setAndroidPriority] = useState<'high' | 'normal'>(
+    initialPayload?.android?.priority || 'high',
+  );
+  const [apnsBadge, setApnsBadge] = useState<number | ''>(
+    initialPayload?.apns?.badge !== undefined ? initialPayload.apns.badge : 1,
+  );
+  const [apnsSound, setApnsSound] = useState(
+    initialPayload?.apns?.sound || 'default',
+  );
+
+  // Sync state whenever initialPayload changes (e.g. from History "Load")
+  useEffect(() => {
+    if (!initialPayload) return;
+    if (initialPayload.targetType) setTargetType(initialPayload.targetType);
+    if (initialPayload.target !== undefined) setTarget(initialPayload.target);
+    if (initialPayload.title !== undefined) setTitle(initialPayload.title);
+    if (initialPayload.body !== undefined) setBody(initialPayload.body);
+    if (initialPayload.imageUrl !== undefined) setImageUrl(initialPayload.imageUrl || '');
+
+    if (initialPayload.data) {
+      setCustomData(
+        Object.entries(initialPayload.data).map(([key, value]) => ({ key, value })),
+      );
+    }
+
+    if (initialPayload.android || initialPayload.apns) {
+      setShowPlatformConfig(true);
+      if (initialPayload.android?.channelId !== undefined) {
+        setAndroidChannelId(initialPayload.android.channelId);
+      }
+      if (initialPayload.android?.sound !== undefined) {
+        setAndroidSound(initialPayload.android.sound);
+      }
+      if (initialPayload.android?.priority) {
+        setAndroidPriority(initialPayload.android.priority);
+      }
+      if (initialPayload.apns?.badge !== undefined) {
+        setApnsBadge(initialPayload.apns.badge);
+      }
+      if (initialPayload.apns?.sound !== undefined) {
+        setApnsSound(initialPayload.apns.sound);
+      }
+    }
+  }, [initialPayload]);
 
   // Request status
   const [isSending, setIsSending] = useState(false);
@@ -90,7 +138,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   };
 
   // Preset templates
-  const applyPreset = (preset: 'basic' | 'rich' | 'promo' | 'data') => {
+  const applyPreset = (preset: 'basic' | 'rich' | 'promo' | 'data' | 'audible') => {
     if (preset === 'basic') {
       setTitle('Important Update Available');
       setBody('Tap to view new announcements and features in your app.');
@@ -103,6 +151,14 @@ export const PushStudio: React.FC<PushStudioProps> = ({
       setTitle('Welcome to the Community! 🎉');
       setBody('Thanks for joining us. Check out getting started tips.');
       setImageUrl('https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?w=800&auto=format&fit=crop&q=60');
+    } else if (preset === 'audible') {
+      setTitle('New Alert');
+      setBody('This notification will make noise.');
+      setImageUrl('');
+      setShowPlatformConfig(true);
+      setAndroidChannelId('audible_channel_id');
+      setAndroidSound('default');
+      setApnsSound('default');
     } else if (preset === 'data') {
       setTitle('Background Sync Trigger');
       setBody('Silent update signal received.');
@@ -127,6 +183,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
       data: getDataObject(),
       android: {
         channelId: androidChannelId || undefined,
+        sound: androidSound || undefined,
         priority: androidPriority,
       },
       apns: {
@@ -195,6 +252,13 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                 className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
               >
                 Rich
+              </button>
+              <button
+                type="button"
+                onClick={() => applyPreset('audible')}
+                className="px-2.5 py-1 text-xs font-medium rounded-lg bg-orange-100 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60 transition"
+              >
+                Audible
               </button>
               <button
                 type="button"
@@ -406,7 +470,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
 
               {showPlatformConfig && (
                 <div className="mt-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 space-y-3.5 text-xs">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-slate-600 dark:text-slate-400 mb-1">
                         Android Channel ID
@@ -414,7 +478,20 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                       <input
                         type="text"
                         value={androidChannelId}
+                        placeholder="e.g. audible_channel_id"
                         onChange={(e) => setAndroidChannelId(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-400 mb-1">
+                        Android Sound
+                      </label>
+                      <input
+                        type="text"
+                        value={androidSound}
+                        placeholder="e.g. default"
+                        onChange={(e) => setAndroidSound(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                       />
                     </div>

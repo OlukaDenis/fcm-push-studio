@@ -21,6 +21,10 @@ export class AndroidConfigDto {
   channelId?: string;
 
   @IsOptional()
+  @IsString()
+  sound?: string;
+
+  @IsOptional()
   @IsEnum(['high', 'normal'])
   priority?: 'high' | 'normal';
 }

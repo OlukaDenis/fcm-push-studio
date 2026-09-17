@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Smartphone,
   Apple,
   Wifi,
   Battery,
   Flame,
-  Clock,
-  Sparkles,
   Layers,
+  Monitor
 } from 'lucide-react';
 
 interface DevicePreviewProps {
@@ -29,6 +28,32 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
 }) => {
   const [platform, setPlatform] = useState<'ios' | 'android'>('ios');
   const [showDataDrawer, setShowDataDrawer] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedTime = currentTime.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const statusBarTime = currentTime.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  const formattedDate = currentTime.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
 
   const displayTitle = title.trim() || 'Notification Title';
   const displayBody =
@@ -40,7 +65,7 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
       {/* Platform Switcher & Header Controls */}
       <div className="w-full max-w-sm flex items-center justify-between mb-4">
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+          <Monitor className="w-3.5 h-3.5 text-orange-500" />
           Live Simulator
         </span>
 
@@ -48,11 +73,10 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
           <button
             type="button"
             onClick={() => setPlatform('ios')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-              platform === 'ios'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${platform === 'ios'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
           >
             <Apple className="w-3.5 h-3.5" />
             <span>iOS</span>
@@ -60,11 +84,10 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
           <button
             type="button"
             onClick={() => setPlatform('android')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-              platform === 'android'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${platform === 'android'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
           >
             <Smartphone className="w-3.5 h-3.5" />
             <span>Android</span>
@@ -98,7 +121,7 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
         >
           {/* Top Status Bar */}
           <div className="flex items-center justify-between text-white/90 text-xs px-2 pt-1 font-medium z-10">
-            <span>9:41</span>
+            <span>{statusBarTime}</span>
             <div className="flex items-center space-x-1.5 text-white/80">
               <Wifi className="w-3.5 h-3.5" />
               <Battery className="w-3.5 h-3.5" />
@@ -108,10 +131,10 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
           {/* Center Wallpaper Lockscreen Clock (iOS Style) */}
           <div className="text-center my-auto flex flex-col items-center opacity-80 pointer-events-none">
             <span className="text-xs text-white/70 font-medium tracking-wide uppercase">
-              Thursday, September 17
+              {formattedDate}
             </span>
             <span className="text-6xl font-light text-white tracking-tight my-1">
-              09:41
+              {formattedTime}
             </span>
             <span className="text-xs text-white/50">
               Target: <span className="font-mono text-orange-400">{targetType.toUpperCase()}</span>

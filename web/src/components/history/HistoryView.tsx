@@ -31,6 +31,42 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<NotificationHistoryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [payloadFormat, setPayloadFormat] = useState<'sdk' | 'rest'>('rest');
+
+  const getFullMessagePayload = (
+    item: NotificationHistoryItem,
+    format: 'sdk' | 'rest' = 'rest',
+  ) => {
+    let base: any = null;
+    if (item.fullPayload) {
+      try {
+        base = JSON.parse(item.fullPayload);
+      } catch (e) {}
+    }
+    if (!base) {
+      base = {
+        [item.targetType === 'token' ? 'token' : 'topic']: item.target,
+        notification: {
+          title: item.title,
+          body: item.body,
+          ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+        },
+      };
+      if (item.dataPayload) {
+        try {
+          base.data = JSON.parse(item.dataPayload);
+        } catch (e) {}
+      }
+      if (item.platformConfig) {
+        try {
+          const platform = JSON.parse(item.platformConfig);
+          if (platform.android) base.android = platform.android;
+          if (platform.apns) base.apns = platform.apns;
+        } catch (e) {}
+      }
+    }
+    return format === 'rest' ? { message: base } : base;
+  };
 
   const fetchHistory = async () => {
     setIsLoading(true);
@@ -93,10 +129,39 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
       } catch (e) {}
     }
 
-    let parsedPlatform: any = {};
+    let android: any = undefined;
+    let apns: any = undefined;
+
     if (item.platformConfig) {
       try {
-        parsedPlatform = JSON.parse(item.platformConfig);
+        const parsed = JSON.parse(item.platformConfig);
+        if (parsed.android) android = parsed.android;
+        if (parsed.apns) apns = parsed.apns;
+      } catch (e) {}
+    }
+
+    // Also check fullPayload if present
+    if (item.fullPayload) {
+      try {
+        const full = JSON.parse(item.fullPayload);
+        if (!parsedData && full.data) {
+          parsedData = full.data;
+        }
+        if (!android && full.android) {
+          android = {
+            channelId:
+              full.android.notification?.channelId ||
+              full.android.notification?.channel_id,
+            sound: full.android.notification?.sound,
+            priority: full.android.priority,
+          };
+        }
+        if (!apns && full.apns) {
+          apns = {
+            badge: full.apns.payload?.aps?.badge,
+            sound: full.apns.payload?.aps?.sound,
+          };
+        }
       } catch (e) {}
     }
 
@@ -107,8 +172,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
       body: item.body,
       imageUrl: item.imageUrl || undefined,
       data: parsedData,
-      android: parsedPlatform.android,
-      apns: parsedPlatform.apns,
+      android,
+      apns,
     });
   };
 
@@ -457,6 +522,75 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
                   </pre>
                 </div>
               )}
+
+              {/* Full Dispatched FCM Message Payload */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      Full Dispatched Message Payload:
+                    </span>
+                    <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-0.5 rounded-lg text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setPayloadFormat('rest')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition ${
+                          payloadFormat === 'rest'
+                            ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        HTTP v1 REST
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPayloadFormat('sdk')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition ${
+                          payloadFormat === 'sdk'
+                            ? 'bg-white dark:bg-slate-700 text-orange-600 dark:text-orange-400 shadow-sm'
+                            : 'text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        Admin SDK
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyText(
+                        JSON.stringify(
+                          getFullMessagePayload(selectedItem, payloadFormat),
+                          null,
+                          2,
+                        ),
+                        'full-payload',
+                      )
+                    }
+                    className="p-1 px-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center gap-1 text-[11px] font-medium transition shadow-sm"
+                    title="Copy full payload JSON"
+                  >
+                    {copiedId === 'full-payload' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-600 dark:text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy JSON</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <pre className="p-3.5 bg-slate-900 dark:bg-black rounded-xl text-slate-100 font-mono text-[11px] overflow-x-auto border border-slate-800 leading-relaxed shadow-inner">
+                  {JSON.stringify(
+                    getFullMessagePayload(selectedItem, payloadFormat),
+                    null,
+                    2,
+                  )}
+                </pre>
+              </div>
 
               {/* Custom Data Payload */}
               {selectedItem.dataPayload && (

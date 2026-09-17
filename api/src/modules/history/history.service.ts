@@ -11,6 +11,7 @@ export interface CreateHistoryDto {
   imageUrl?: string;
   dataPayload?: any;
   platformConfig?: any;
+  fullPayload?: any;
   status: 'SUCCESS' | 'FAILED';
   fcmMessageId?: string;
   errorMessage?: string;
@@ -36,6 +37,7 @@ export class HistoryService {
         imageUrl: data.imageUrl || undefined,
         dataPayload: data.dataPayload ? JSON.stringify(data.dataPayload) : undefined,
         platformConfig: data.platformConfig ? JSON.stringify(data.platformConfig) : undefined,
+        fullPayload: data.fullPayload ? JSON.stringify(data.fullPayload) : undefined,
         status: data.status,
         fcmMessageId: data.fcmMessageId,
         errorMessage: data.errorMessage,

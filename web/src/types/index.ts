@@ -10,6 +10,7 @@ export type TargetType = 'token' | 'topic' | 'broadcast';
 
 export interface AndroidConfig {
   channelId?: string;
+  sound?: string;
   priority?: 'high' | 'normal';
 }
 
@@ -50,6 +51,7 @@ export interface NotificationHistoryItem {
   status: 'SUCCESS' | 'FAILED';
   fcmMessageId?: string;
   errorMessage?: string;
+  fullPayload?: string;
   rawResponse?: string;
   createdAt: string;
 }

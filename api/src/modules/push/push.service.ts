@@ -45,11 +45,16 @@ export class PushService implements INotificationProvider {
     }
 
     // Android configuration
+    const androidNotification: admin.messaging.AndroidNotification = {
+      ...(dto.android?.channelId ? { channelId: dto.android.channelId } : {}),
+      ...(dto.android?.sound ? { sound: dto.android.sound } : {}),
+    };
+
     const androidConfig: admin.messaging.AndroidConfig | undefined = dto.android
       ? {
           priority: dto.android.priority === 'high' ? 'high' : 'normal',
-          ...(dto.android.channelId
-            ? { notification: { channelId: dto.android.channelId } }
+          ...(Object.keys(androidNotification).length > 0
+            ? { notification: androidNotification }
             : {}),
         }
       : undefined;
@@ -103,6 +108,7 @@ export class PushService implements INotificationProvider {
         imageUrl: dto.imageUrl,
         dataPayload: dto.data,
         platformConfig,
+        fullPayload: message,
         status: 'SUCCESS',
         fcmMessageId: messageId,
         rawResponse: { messageId },
@@ -129,6 +135,7 @@ export class PushService implements INotificationProvider {
         imageUrl: dto.imageUrl,
         dataPayload: dto.data,
         platformConfig,
+        fullPayload: message,
         status: 'FAILED',
         errorMessage: `[${fcmErrorCode}] ${errorMessage}`,
         rawResponse: err.errorInfo || err,
