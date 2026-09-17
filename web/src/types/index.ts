@@ -1,0 +1,70 @@
+export interface FirebaseStatus {
+  connected: boolean;
+  projectId: string | null;
+  clientEmail: string | null;
+  serviceAccountPath: string | null;
+  error?: string | null;
+}
+
+export type TargetType = 'token' | 'topic' | 'broadcast';
+
+export interface AndroidConfig {
+  channelId?: string;
+  priority?: 'high' | 'normal';
+}
+
+export interface ApnsConfig {
+  badge?: number;
+  sound?: string;
+}
+
+export interface SendPushPayload {
+  targetType: TargetType;
+  target?: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  data?: Record<string, string>;
+  android?: AndroidConfig;
+  apns?: ApnsConfig;
+}
+
+export interface SendResult {
+  success: boolean;
+  messageId?: string;
+  targetType: TargetType;
+  target: string;
+  error?: string;
+  rawResponse?: any;
+}
+
+export interface NotificationHistoryItem {
+  id: number;
+  targetType: TargetType;
+  target: string;
+  title: string;
+  body: string;
+  imageUrl?: string;
+  dataPayload?: string;
+  platformConfig?: string;
+  status: 'SUCCESS' | 'FAILED';
+  fcmMessageId?: string;
+  errorMessage?: string;
+  rawResponse?: string;
+  createdAt: string;
+}
+
+export interface TopicSubscriptionPayload {
+  topic: string;
+  token?: string;
+  tokens?: string[];
+}
+
+export interface TopicOperationResult {
+  success: boolean;
+  topic: string;
+  successCount: number;
+  failureCount: number;
+  errors?: Array<{ index: number; error: string }>;
+  rawResponse?: any;
+}
