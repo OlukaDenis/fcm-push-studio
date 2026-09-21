@@ -7,6 +7,7 @@ export interface FirebaseStatus {
 }
 
 export type TargetType = 'token' | 'topic' | 'broadcast';
+export type MessageType = 'display' | 'data-only';
 
 export interface AndroidConfig {
   channelId?: string;
@@ -20,10 +21,11 @@ export interface ApnsConfig {
 }
 
 export interface SendPushPayload {
+  messageType?: MessageType;
   targetType: TargetType;
   target?: string;
-  title: string;
-  body: string;
+  title?: string;
+  body?: string;
   imageUrl?: string;
   data?: Record<string, string>;
   android?: AndroidConfig;
@@ -33,6 +35,7 @@ export interface SendPushPayload {
 export interface SendResult {
   success: boolean;
   messageId?: string;
+  messageType?: MessageType;
   targetType: TargetType;
   target: string;
   error?: string;
@@ -41,10 +44,11 @@ export interface SendResult {
 
 export interface NotificationHistoryItem {
   id: number;
+  messageType?: MessageType;
   targetType: TargetType;
   target: string;
-  title: string;
-  body: string;
+  title?: string;
+  body?: string;
   imageUrl?: string;
   dataPayload?: string;
   platformConfig?: string;
@@ -54,6 +58,12 @@ export interface NotificationHistoryItem {
   fullPayload?: string;
   rawResponse?: string;
   createdAt: string;
+}
+
+export interface AppSettings {
+  defaultMessageType: MessageType;
+  autoInjectApnsBackground: boolean;
+  autoAndroidHighPriority: boolean;
 }
 
 export interface TopicSubscriptionPayload {

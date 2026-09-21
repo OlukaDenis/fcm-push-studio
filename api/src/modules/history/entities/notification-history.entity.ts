@@ -16,11 +16,14 @@ export class NotificationHistory {
   @Column({ type: 'text' })
   target: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  title: string;
+  @Column({ type: 'varchar', length: 20, default: 'display' })
+  messageType: 'display' | 'data-only';
 
-  @Column({ type: 'text' })
-  body: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  title?: string;
+
+  @Column({ type: 'text', nullable: true })
+  body?: string;
 
   @Column({ type: 'text', nullable: true })
   imageUrl?: string;

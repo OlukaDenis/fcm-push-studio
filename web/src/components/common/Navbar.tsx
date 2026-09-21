@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   RotateCw,
   HelpCircle,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { FirebaseStatus } from '../../types';
 
@@ -22,6 +23,7 @@ interface NavbarProps {
   onRefreshStatus: () => void;
   onOpenGuide: () => void;
   onOpenManager: () => void;
+  onOpenSettings: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -34,103 +36,108 @@ export const Navbar: React.FC<NavbarProps> = ({
   onRefreshStatus,
   onOpenGuide,
   onOpenManager,
+  onOpenSettings,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 glass-panel">
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 gap-3 sm:gap-6">
           {/* Brand Logo & Name */}
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 text-white shadow-md shadow-orange-500/20">
-              <Bell className="w-5 h-5" />
+          <div className="flex items-center space-x-2.5 flex-shrink-0">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-amber-400 text-white shadow-md shadow-orange-500/25 flex-shrink-0">
+              <Bell className="w-4.5 h-4.5" />
             </div>
-            <div>
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+            <div className="flex items-center space-x-2">
+              <span className="font-bold text-base tracking-tight text-slate-900 dark:text-white whitespace-nowrap">
                 FCM Push Studio
               </span>
-              <span className="ml-2 text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-950/70 dark:text-orange-300 border border-orange-200 dark:border-orange-800/50">
-                v1 HTTP API
+              <span className="hidden xl:inline text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-orange-100/90 text-orange-700 dark:bg-orange-950/70 dark:text-orange-300 border border-orange-200/60 dark:border-orange-800/50 whitespace-nowrap">
+                v1 HTTP
               </span>
             </div>
           </div>
 
-          {/* Center: Navigation Tabs */}
-          <nav className="hidden md:flex items-center space-x-1 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800">
+          {/* Center: Navigation Tabs (Single line, no wrap) */}
+          <nav className="hidden md:flex items-center p-1 bg-slate-100/90 dark:bg-slate-900/90 rounded-xl border border-slate-200/80 dark:border-slate-800 flex-shrink-0">
             <button
+              type="button"
               onClick={() => setActiveTab('push')}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'push'
-                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/50 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-3.5 h-3.5" />
               <span>Push Studio</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('topic')}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'topic'
-                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/50 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <Radio className="w-4 h-4" />
-              <span>Topic Manager</span>
+              <Radio className="w-3.5 h-3.5" />
+              <span>Topics</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab('history')}
-              className={`flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+              className={`flex items-center space-x-2 px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === 'history'
-                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm'
+                  ? 'bg-white dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/50 dark:border-slate-700/60'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
-              <History className="w-4 h-4" />
-              <span>Dispatch History</span>
+              <History className="w-3.5 h-3.5" />
+              <span>History</span>
             </button>
           </nav>
 
-          {/* Right Side: Firebase Status & Dark/Light Toggle */}
-          <div className="flex items-center space-x-3">
-            {/* Firebase Status Badge (Click to manage) */}
-            <div className="flex items-center">
+          {/* Right Side: Firebase Status & Toolbars */}
+          <div className="flex items-center space-x-2 sm:space-x-2.5 flex-shrink-0">
+            {/* Firebase Connection Capsule */}
+            <div className="flex items-center bg-slate-100/90 dark:bg-slate-900/90 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
               {firebaseStatus?.connected ? (
                 <button
                   type="button"
                   onClick={onOpenManager}
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-medium cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition shadow-sm"
-                  title={`Connected to Project: ${firebaseStatus.projectId}\nClick to manage or replace credentials`}
+                  className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/60 transition cursor-pointer"
+                  title={`Connected to FCM Project: ${firebaseStatus.projectId}\nClick to manage or update service account`}
                 >
-                  <span className="relative flex h-2 w-2">
+                  <span className="relative flex h-2 w-2 flex-shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  <span className="hidden sm:inline font-mono">
+                  <span className="font-mono text-xs max-w-[100px] sm:max-w-[130px] lg:max-w-[160px] truncate whitespace-nowrap">
                     {firebaseStatus.projectId}
                   </span>
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={onOpenManager}
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-700 dark:text-rose-300 text-xs font-medium cursor-pointer hover:bg-rose-100 dark:hover:bg-rose-900/40 transition shadow-sm animate-pulse-subtle"
-                  title="No Service Account Connected - Click to upload or paste JSON"
+                  className="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition cursor-pointer"
+                  title="No Service Account Connected - Click to upload JSON"
                 >
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="hidden sm:inline font-semibold">Upload Service Account</span>
+                  <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="hidden sm:inline whitespace-nowrap">Connect FCM</span>
                 </button>
               )}
 
-              {/* Refresh / Reload Service Account button */}
+              {/* Refresh credentials button */}
               <button
+                type="button"
                 onClick={onRefreshStatus}
                 disabled={isLoadingStatus}
-                title="Reload credentials from disk"
-                className="ml-1.5 p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Reload service-account.json from disk"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
               >
                 <RotateCw
                   className={`w-3.5 h-3.5 ${isLoadingStatus ? 'animate-spin text-orange-500' : ''}`}
@@ -138,38 +145,58 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             </div>
 
-            {/* Setup Guide Button */}
-            <button
-              onClick={onOpenGuide}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm text-xs font-medium"
-              title="How to extract and setup service-account.json"
-            >
-              <HelpCircle className="w-4 h-4 text-orange-500" />
-              <span className="hidden sm:inline">Setup Guide</span>
-            </button>
+            {/* Quick Actions Toolbar Capsule */}
+            <div className="flex items-center space-x-0.5 bg-slate-100/90 dark:bg-slate-900/90 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
+              {/* Setup Guide Button */}
+              <button
+                type="button"
+                onClick={onOpenGuide}
+                className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
+                title="How to extract and setup service-account.json"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                <span className="hidden lg:inline whitespace-nowrap">Guide</span>
+              </button>
 
-            {/* Theme Toggle Button */}
-            <button
-              onClick={() => setIsDark(!isDark)}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
-              aria-label="Toggle theme"
-            >
-              {isDark ? (
-                <Sun className="w-4 h-4 text-amber-400" />
-              ) : (
-                <Moon className="w-4 h-4 text-slate-700" />
-              )}
-            </button>
+              <div className="w-[1px] h-3.5 bg-slate-200 dark:border-slate-700/60 dark:bg-slate-800 my-auto" />
+
+              {/* Theme Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsDark(!isDark)}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
+                title={isDark ? 'Switch to Light theme' : 'Switch to Dark theme'}
+                aria-label="Toggle theme"
+              >
+                {isDark ? (
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                ) : (
+                  <Moon className="w-3.5 h-3.5 text-slate-600" />
+                )}
+              </button>
+
+              {/* Studio Settings Button */}
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-orange-600 dark:hover:text-orange-400 hover:bg-white dark:hover:bg-slate-800 transition cursor-pointer"
+                title="Studio Settings (Default push mode, APNs background flags)"
+                aria-label="Studio Settings"
+              >
+                <SettingsIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Mobile Nav Tabs */}
-        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-200 dark:border-slate-800 text-xs">
+        <div className="flex md:hidden items-center justify-around py-2 border-t border-slate-200/80 dark:border-slate-800 text-xs">
           <button
+            type="button"
             onClick={() => setActiveTab('push')}
-            className={`flex items-center space-x-1 py-1 px-2 rounded ${
+            className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg font-medium transition ${
               activeTab === 'push'
-                ? 'text-orange-600 font-semibold'
+                ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-semibold'
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >
@@ -177,21 +204,23 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Push Studio</span>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('topic')}
-            className={`flex items-center space-x-1 py-1 px-2 rounded ${
+            className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg font-medium transition ${
               activeTab === 'topic'
-                ? 'text-orange-600 font-semibold'
+                ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-semibold'
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >
             <Radio className="w-3.5 h-3.5" />
-            <span>Topic Manager</span>
+            <span>Topics</span>
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('history')}
-            className={`flex items-center space-x-1 py-1 px-2 rounded ${
+            className={`flex items-center space-x-1.5 py-1.5 px-3 rounded-lg font-medium transition ${
               activeTab === 'history'
-                ? 'text-orange-600 font-semibold'
+                ? 'bg-orange-50 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 font-semibold'
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >

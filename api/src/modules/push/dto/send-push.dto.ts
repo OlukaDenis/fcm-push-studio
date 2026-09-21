@@ -15,6 +15,11 @@ export enum TargetType {
   BROADCAST = 'broadcast',
 }
 
+export enum MessageType {
+  DISPLAY = 'display',
+  DATA_ONLY = 'data-only',
+}
+
 export class AndroidConfigDto {
   @IsOptional()
   @IsString()
@@ -40,6 +45,12 @@ export class ApnsConfigDto {
 }
 
 export class SendPushDto {
+  @IsOptional()
+  @IsEnum(MessageType, {
+    message: 'messageType must be either display or data-only',
+  })
+  messageType?: MessageType;
+
   @IsEnum(TargetType, {
     message: 'targetType must be one of: token, topic, broadcast',
   })
@@ -49,13 +60,13 @@ export class SendPushDto {
   @IsString()
   target?: string; // Token string or topic name. For broadcast, defaults to 'all' if omitted.
 
-  @IsNotEmpty({ message: 'Notification title is required' })
+  @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
-  @IsNotEmpty({ message: 'Notification body is required' })
+  @IsOptional()
   @IsString()
-  body: string;
+  body?: string;
 
   @IsOptional()
   @IsString()

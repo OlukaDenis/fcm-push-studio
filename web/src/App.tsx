@@ -5,8 +5,10 @@ import { TopicManager } from './components/topics/TopicManager';
 import { HistoryView } from './components/history/HistoryView';
 import { ServiceAccountGuideModal } from './components/common/ServiceAccountGuideModal';
 import { ServiceAccountManager } from './components/credentials/ServiceAccountManager';
+import { SettingsModal, DEFAULT_APP_SETTINGS } from './components/common/SettingsModal';
 import { getFirebaseStatus, reloadFirebase } from './services/api';
-import { FirebaseStatus, SendPushPayload } from './types';
+import { FirebaseStatus, SendPushPayload, AppSettings } from './types';
+import { useToast } from './context/ToastContext';
 import {
   AlertTriangle,
   FileCode,
@@ -21,6 +23,7 @@ import {
 } from 'lucide-react';
 
 export function App() {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'push' | 'topic' | 'history'>('push');
   const [isDark, setIsDark] = useState<boolean>(() => {
     return (
@@ -34,6 +37,20 @@ export function App() {
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => {
+    try {
+      const saved = localStorage.getItem('fcm_studio_settings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return DEFAULT_APP_SETTINGS;
+  });
+
+  const handleSaveSettings = (newSettings: AppSettings) => {
+    setAppSettings(newSettings);
+    localStorage.setItem('fcm_studio_settings', JSON.stringify(newSettings));
+  };
+
   const [isBannerGuideExpanded, setIsBannerGuideExpanded] = useState(true);
   const [copiedPath, setCopiedPath] = useState(false);
   const [clonedPayload, setClonedPayload] = useState<Partial<SendPushPayload> | undefined>(
@@ -75,8 +92,14 @@ export function App() {
     try {
       const status = await reloadFirebase();
       setFirebaseStatus(status);
-    } catch (err) {
+      if (status.connected) {
+        toast.success('Firebase connected', `Project: ${status.projectId}`);
+      } else {
+        toast.error('Firebase not connected', status.error || 'No valid service account file found.');
+      }
+    } catch (err: any) {
       await checkStatus();
+      toast.error('Reload failed', err.message || 'Unable to reload Firebase credentials');
     } finally {
       setIsLoadingStatus(false);
     }
@@ -94,6 +117,7 @@ export function App() {
   const copyPath = () => {
     navigator.clipboard.writeText('api/service-account.json');
     setCopiedPath(true);
+    toast.info('Copied path to clipboard');
     setTimeout(() => setCopiedPath(false), 2000);
   };
 
@@ -109,6 +133,7 @@ export function App() {
         onRefreshStatus={handleReloadCredentials}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenManager={() => setIsManagerOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -267,6 +292,8 @@ export function App() {
         {activeTab === 'push' && (
           <PushStudio
             initialPayload={clonedPayload}
+            appSettings={appSettings}
+            onOpenSettings={() => setIsSettingsOpen(true)}
             onNotificationSent={() => {
               // Hook after notification sent
             }}
@@ -297,6 +324,14 @@ export function App() {
         onClose={() => setIsGuideOpen(false)}
         onReload={handleReloadCredentials}
         isLoading={isLoadingStatus}
+      />
+
+      {/* Studio Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={appSettings}
+        onSaveSettings={handleSaveSettings}
       />
 
       {/* Footer */}

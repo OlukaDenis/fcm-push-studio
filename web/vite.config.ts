@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const localEnv = loadEnv(mode, process.cwd(), '');
   const env = { ...rootEnv, ...localEnv };
 
-  const port = parseInt(env.VITE_PORT || env.PORT || '5173', 10);
+  const port = parseInt(env.VITE_PORT || env.PORT || '5550', 10);
   const apiTarget = env.VITE_API_URL || env.API_URL || 'http://localhost:3001';
 
   return {

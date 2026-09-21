@@ -15,20 +15,32 @@ import {
   CheckCircle2,
   Image as ImageIcon,
   Sliders,
+  Bell,
+  Zap,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { DevicePreview } from '../preview/DevicePreview';
-import { SendPushPayload, SendResult, TargetType } from '../../types';
+import { SendPushPayload, SendResult, TargetType, MessageType, AppSettings } from '../../types';
 import { sendPushNotification } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 interface PushStudioProps {
   initialPayload?: Partial<SendPushPayload>;
+  appSettings?: AppSettings;
+  onOpenSettings?: () => void;
   onNotificationSent?: () => void;
 }
 
 export const PushStudio: React.FC<PushStudioProps> = ({
   initialPayload,
+  appSettings,
+  onOpenSettings,
   onNotificationSent,
 }) => {
+  const toast = useToast();
+  const [messageType, setMessageType] = useState<MessageType>(
+    initialPayload?.messageType || appSettings?.defaultMessageType || 'display',
+  );
   const [targetType, setTargetType] = useState<TargetType>(
     initialPayload?.targetType || 'token',
   );
@@ -38,7 +50,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   );
   const [body, setBody] = useState<string>(
     initialPayload?.body ||
-      'This is a real-time push notification test dispatched from NestJS.',
+    'This is a real-time push notification test dispatched from NestJS.',
   );
   const [imageUrl, setImageUrl] = useState<string>(
     initialPayload?.imageUrl || '',
@@ -74,6 +86,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   // Sync state whenever initialPayload changes (e.g. from History "Load")
   useEffect(() => {
     if (!initialPayload) return;
+    if (initialPayload.messageType) setMessageType(initialPayload.messageType);
     if (initialPayload.targetType) setTargetType(initialPayload.targetType);
     if (initialPayload.target !== undefined) setTarget(initialPayload.target);
     if (initialPayload.title !== undefined) setTitle(initialPayload.title);
@@ -140,18 +153,22 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   // Preset templates
   const applyPreset = (preset: 'basic' | 'rich' | 'promo' | 'data' | 'audible') => {
     if (preset === 'basic') {
+      setMessageType('display');
       setTitle('Important Update Available');
       setBody('Tap to view new announcements and features in your app.');
       setImageUrl('');
     } else if (preset === 'rich') {
+      setMessageType('display');
       setTitle('Special Weekend Flash Sale! 🎁');
       setBody('Get up to 50% discount on all selected store items. Limited time only!');
       setImageUrl('https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800&auto=format&fit=crop&q=60');
     } else if (preset === 'promo') {
+      setMessageType('display');
       setTitle('Welcome to the Community! 🎉');
       setBody('Thanks for joining us. Check out getting started tips.');
       setImageUrl('https://images.unsplash.com/photo-1579202673506-ca3ce28943ef?w=800&auto=format&fit=crop&q=60');
     } else if (preset === 'audible') {
+      setMessageType('display');
       setTitle('New Alert');
       setBody('This notification will make noise.');
       setImageUrl('');
@@ -160,11 +177,11 @@ export const PushStudio: React.FC<PushStudioProps> = ({
       setAndroidSound('default');
       setApnsSound('default');
     } else if (preset === 'data') {
-      setTitle('Background Sync Trigger');
-      setBody('Silent update signal received.');
+      setMessageType('data-only');
       setCustomData([
         { key: 'action', value: 'REFRESH_CACHE' },
         { key: 'sync_id', value: Date.now().toString() },
+        { key: 'category', value: 'BACKGROUND_UPDATE' },
       ]);
     }
   };
@@ -174,27 +191,58 @@ export const PushStudio: React.FC<PushStudioProps> = ({
     setIsSending(true);
     setSendResult(null);
 
+    const isDataOnly = messageType === 'data-only';
+    const dataObj = getDataObject();
+
+    if (isDataOnly && Object.keys(dataObj).length === 0) {
+      const err = 'Data-only push notifications require at least one custom data key-value pair.';
+      setSendResult({
+        success: false,
+        targetType,
+        target: target || 'all',
+        error: err,
+      });
+      toast.error(err, 'Validation Failed');
+      setIsSending(false);
+      return;
+    }
+
     const payload: SendPushPayload = {
+      messageType,
       targetType,
       target: targetType === 'broadcast' ? (target || 'all') : target,
-      title,
-      body,
-      imageUrl: imageUrl.trim() || undefined,
-      data: getDataObject(),
+      ...(isDataOnly
+        ? {}
+        : {
+          title: title.trim(),
+          body: body.trim(),
+          imageUrl: imageUrl.trim() || undefined,
+        }),
+      data: dataObj,
       android: {
-        channelId: androidChannelId || undefined,
-        sound: androidSound || undefined,
+        channelId: isDataOnly ? undefined : (androidChannelId || undefined),
+        sound: isDataOnly ? undefined : (androidSound || undefined),
         priority: androidPriority,
       },
       apns: {
-        badge: apnsBadge === '' ? undefined : Number(apnsBadge),
-        sound: apnsSound || undefined,
+        badge: isDataOnly ? undefined : (apnsBadge === '' ? undefined : Number(apnsBadge)),
+        sound: isDataOnly ? undefined : (apnsSound || undefined),
       },
     };
 
     try {
       const result = await sendPushNotification(payload);
       setSendResult(result);
+      if (result.success) {
+        toast.success(
+          result.messageId
+            ? `Message dispatched! ID: ${result.messageId.substring(0, 26)}...`
+            : 'Push notification successfully transmitted to FCM!',
+          'Notification Sent',
+        );
+      } else {
+        toast.error(result.error || 'FCM dispatch failed', 'Send Error');
+      }
       if (onNotificationSent) {
         onNotificationSent();
       }
@@ -207,6 +255,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
         target: target || 'all',
         error: errorMsg,
       });
+      toast.error(errorMsg, 'FCM Send Failed');
     } finally {
       setIsSending(false);
     }
@@ -215,6 +264,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(true);
+    toast.info('Copied FCM Message ID to clipboard!');
     setTimeout(() => setCopiedId(false), 2000);
   };
 
@@ -237,7 +287,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
             {/* Quick Preset Buttons */}
             <div className="flex items-center space-x-1.5">
               <span className="text-xs text-slate-400 mr-1 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" /> Presets:
+                Presets:
               </span>
               <button
                 type="button"
@@ -270,6 +320,50 @@ export const PushStudio: React.FC<PushStudioProps> = ({
             </div>
           </div>
 
+          {/* Notification Mode Selector */}
+          <div className="mb-6 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMessageType('display')}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${messageType === 'display'
+                ? 'bg-white dark:bg-slate-900 text-orange-600 dark:text-orange-400 shadow-sm border border-slate-200/60 dark:border-slate-700 ring-1 ring-orange-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              <Bell className="w-4 h-4" />
+              <span>Display Notification</span>
+              <span className="hidden sm:inline text-[10px] opacity-75 font-normal ml-1">
+                (Visual UI Alert)
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMessageType('data-only')}
+              className={`flex-1 flex items-center justify-center space-x-2 py-2.5 px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer ${messageType === 'data-only'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/60 dark:border-slate-700 ring-1 ring-indigo-500/20'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+            >
+              <Zap className="w-4 h-4" />
+              <span>Data-Only (Silent)</span>
+              <span className="hidden sm:inline text-[10px] opacity-75 font-normal ml-1">
+                (Background Wake)
+              </span>
+            </button>
+
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                title="Configure Push Defaults in Settings"
+                className="p-2.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer"
+              >
+                <SettingsIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           <form onSubmit={handleSend} className="space-y-5">
             {/* Target Type Selector */}
             <div>
@@ -280,11 +374,10 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetType('token')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                    targetType === 'token'
-                      ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${targetType === 'token'
+                    ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   <Smartphone className="w-5 h-5 mb-1.5" />
                   <span className="text-xs">Single Device</span>
@@ -293,11 +386,10 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetType('topic')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                    targetType === 'topic'
-                      ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${targetType === 'topic'
+                    ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   <Radio className="w-5 h-5 mb-1.5" />
                   <span className="text-xs">Topic Target</span>
@@ -306,11 +398,10 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                 <button
                   type="button"
                   onClick={() => setTargetType('broadcast')}
-                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
-                    targetType === 'broadcast'
-                      ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
-                  }`}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${targetType === 'broadcast'
+                    ? 'border-orange-500 bg-orange-50/50 dark:bg-orange-950/30 text-orange-600 dark:text-orange-400 font-semibold ring-1 ring-orange-500'
+                    : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
                 >
                   <Users className="w-5 h-5 mb-1.5" />
                   <span className="text-xs">Broadcast ('all')</span>
@@ -341,76 +432,102 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                   targetType === 'token'
                     ? 'e.g. fN8gU9_K... (paste long FCM device token)'
                     : targetType === 'topic'
-                    ? 'e.g. news, sports, alerts'
-                    : 'all (or custom general topic)'
+                      ? 'e.g. news, sports, alerts'
+                      : 'all (or custom general topic)'
                 }
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono"
               />
             </div>
 
-            {/* Title & Body */}
-            <div className="space-y-3.5">
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Notification Title *
-                  </label>
-                  <span className="text-[11px] text-slate-400">{title.length}/100</span>
+            {/* Title & Body (Only for Display Notifications) */}
+            {messageType === 'display' ? (
+              <div className="space-y-3.5 animate-fade-in">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Notification Title *
+                    </label>
+                    <span className="text-[11px] text-slate-400">{title.length}/100</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    maxLength={100}
+                    required
+                    placeholder="Enter notification title..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  maxLength={100}
-                  required
-                  placeholder="Enter notification title..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                />
-              </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Notification Body *
-                  </label>
-                  <span className="text-[11px] text-slate-400">{body.length}/300</span>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Notification Body *
+                    </label>
+                    <span className="text-[11px] text-slate-400">{body.length}/300</span>
+                  </div>
+                  <textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    maxLength={300}
+                    required
+                    rows={3}
+                    placeholder="Enter notification body message..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  />
                 </div>
-                <textarea
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  maxLength={300}
-                  required
-                  rows={3}
-                  placeholder="Enter notification body message..."
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
-                />
-              </div>
 
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1.5">
-                  <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
-                  Image URL (Optional)
-                </label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://example.com/banner.jpg"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-xs"
-                />
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                    Image URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/banner.jpg"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-xs"
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Data-Only Mode Notice Banner */
+              <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 animate-fade-in">
+                <div className="flex items-center space-x-2.5 text-indigo-900 dark:text-indigo-200">
+                  <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs">Silent Push Notification Mode</h4>
+                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                      Title, body, and image are excluded from the FCM payload.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Custom Data Key-Value Editor */}
             <div className="border-t border-slate-200 dark:border-slate-800 pt-4">
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  Custom Data Payload (Key-Value)
-                </label>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                    Custom Data Payload (Key-Value)
+                  </label>
+                  {messageType === 'data-only' ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      Required for Silent Push
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400">Optional</span>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={handleAddDataRow}
-                  className="flex items-center space-x-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 font-medium"
+                  className="flex items-center space-x-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 font-medium cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Field</span>
@@ -558,7 +675,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Dispatch Push Notification</span>
+                    <span>Send Notification</span>
                   </>
                 )}
               </button>
@@ -568,11 +685,10 @@ export const PushStudio: React.FC<PushStudioProps> = ({
           {/* Real-time Result Feedback Box */}
           {sendResult && (
             <div
-              className={`mt-5 p-4 rounded-xl border transition-all ${
-                sendResult.success
-                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100'
-                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-100'
-              }`}
+              className={`mt-5 p-4 rounded-xl border transition-all ${sendResult.success
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-100'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-100'
+                }`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2">
@@ -627,6 +743,7 @@ export const PushStudio: React.FC<PushStudioProps> = ({
       {/* Right Column: Live Mobile Mockup (5 cols) */}
       <div className="lg:col-span-5 flex justify-center sticky top-24">
         <DevicePreview
+          messageType={messageType}
           title={title}
           body={body}
           imageUrl={imageUrl}

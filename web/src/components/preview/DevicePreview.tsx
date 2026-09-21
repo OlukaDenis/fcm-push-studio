@@ -6,12 +6,17 @@ import {
   Battery,
   Flame,
   Layers,
-  Monitor
+  Monitor,
+  Zap,
+  Terminal,
+  Activity,
 } from 'lucide-react';
+import { MessageType } from '../../types';
 
 interface DevicePreviewProps {
-  title: string;
-  body: string;
+  messageType?: MessageType;
+  title?: string;
+  body?: string;
   imageUrl?: string;
   dataPayload?: Record<string, string>;
   targetType: string;
@@ -19,8 +24,9 @@ interface DevicePreviewProps {
 }
 
 export const DevicePreview: React.FC<DevicePreviewProps> = ({
-  title,
-  body,
+  messageType = 'display',
+  title = '',
+  body = '',
   imageUrl,
   dataPayload,
   targetType,
@@ -141,9 +147,72 @@ export const DevicePreview: React.FC<DevicePreviewProps> = ({
             </span>
           </div>
 
-          {/* The Live Notification Banner */}
+          {/* The Live Notification Banner / Background Receiver */}
           <div className="w-full z-10 animate-fade-in-up">
-            {platform === 'ios' ? (
+            {messageType === 'data-only' ? (
+              /* Background Data Receiver Card */
+              <div className="bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-3.5 shadow-2xl text-white space-y-2.5">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex items-center justify-center">
+                      <div className="w-5 h-5 rounded-md bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+                        <Zap className="w-3 h-3" />
+                      </div>
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-indigo-300 tracking-wide uppercase block">
+                        Background Sync Packet
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {platform === 'ios' ? 'didReceiveRemoteNotification' : 'onMessageReceived'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-indigo-400 font-mono bg-indigo-950/70 px-1.5 py-0.5 rounded border border-indigo-800/60 font-semibold">
+                    SILENT PUSH
+                  </span>
+                </div>
+
+                {/* Packet payload inspector */}
+                <div className="bg-slate-950/80 rounded-xl p-2.5 border border-slate-800 text-[11px] font-mono space-y-1">
+                  <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-800/80">
+                    <span className="flex items-center gap-1 text-[10px]">
+                      <Terminal className="w-3 h-3 text-indigo-400" /> Payload ({dataCount} keys)
+                    </span>
+                    <span className="text-emerald-400 text-[10px] flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Delivered
+                    </span>
+                  </div>
+
+                  {dataCount > 0 ? (
+                    <div className="max-h-28 overflow-y-auto space-y-0.5 pt-1">
+                      {Object.entries(dataPayload || {}).map(([k, v]) => (
+                        <div key={k} className="flex items-center justify-between text-slate-300">
+                          <span className="text-indigo-400">"{k}":</span>
+                          <span className="text-amber-300 truncate max-w-[140px]">"{v}"</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-2 text-center text-slate-500 italic text-[10px]">
+                      Waiting for custom data pairs...
+                    </div>
+                  )}
+                </div>
+
+                {/* Silent notice */}
+                <div className="flex items-center gap-1.5 text-[10px] text-slate-300 bg-slate-800/50 px-2 py-1.5 rounded-lg border border-slate-700/40">
+                  <Activity className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                  <span>No OS banner shown. Background worker triggered.</span>
+                </div>
+              </div>
+            ) : platform === 'ios' ? (
               /* iOS Style Notification Banner */
               <div className="bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-2xl p-3.5 shadow-xl text-white">
                 {/* Notification Header */}

@@ -14,20 +14,25 @@ import {
   Smartphone,
   Radio,
   Users,
+  Zap,
+  Bell,
 } from 'lucide-react';
 import { getHistory, deleteHistoryItem, clearAllHistory } from '../../services/api';
 import { NotificationHistoryItem, SendPushPayload, TargetType } from '../../types';
+import { useToast } from '../../context/ToastContext';
 
 interface HistoryViewProps {
   onCloneToStudio: (payload: Partial<SendPushPayload>) => void;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => {
+  const toast = useToast();
   const [historyItems, setHistoryItems] = useState<NotificationHistoryItem[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [targetFilter, setTargetFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [messageTypeFilter, setMessageTypeFilter] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<NotificationHistoryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -46,11 +51,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
     if (!base) {
       base = {
         [item.targetType === 'token' ? 'token' : 'topic']: item.target,
-        notification: {
-          title: item.title,
-          body: item.body,
-          ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
-        },
+        ...(item.messageType === 'data-only'
+          ? {}
+          : {
+              notification: {
+                title: item.title,
+                body: item.body,
+                ...(item.imageUrl ? { imageUrl: item.imageUrl } : {}),
+              },
+            }),
       };
       if (item.dataPayload) {
         try {
@@ -75,6 +84,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
         limit: 100,
         targetType: targetFilter || undefined,
         status: statusFilter || undefined,
+        messageType: messageTypeFilter || undefined,
       });
       setHistoryItems(res.items);
       setTotal(res.total);
@@ -87,7 +97,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
 
   useEffect(() => {
     fetchHistory();
-  }, [targetFilter, statusFilter]);
+  }, [targetFilter, statusFilter, messageTypeFilter]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this notification record?')) return;
@@ -98,8 +108,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
       if (selectedItem?.id === id) {
         setSelectedItem(null);
       }
-    } catch (err) {
+      toast.success('History record deleted');
+    } catch (err: any) {
       console.error('Failed to delete history item', err);
+      toast.error('Failed to delete history item', err.response?.data?.message || err.message);
     }
   };
 
@@ -110,14 +122,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
       setHistoryItems([]);
       setTotal(0);
       setSelectedItem(null);
-    } catch (err) {
+      toast.success('Notification history cleared');
+    } catch (err: any) {
       console.error('Failed to clear history', err);
+      toast.error('Failed to clear history', err.response?.data?.message || err.message);
     }
   };
 
   const copyText = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
+    toast.info('Copied to clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -166,15 +181,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
     }
 
     onCloneToStudio({
+      messageType: item.messageType || 'display',
       targetType: item.targetType,
       target: item.target,
-      title: item.title,
-      body: item.body,
+      title: item.title || '',
+      body: item.body || '',
       imageUrl: item.imageUrl || undefined,
       data: parsedData,
       android,
       apns,
     });
+    toast.info('Payload loaded into Push Studio', `Target: ${item.target.slice(0, 20)}...`);
   };
 
   // Filter items by client search query
@@ -182,8 +199,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (
-      item.title.toLowerCase().includes(q) ||
-      item.body.toLowerCase().includes(q) ||
+      (item.title && item.title.toLowerCase().includes(q)) ||
+      (item.body && item.body.toLowerCase().includes(q)) ||
+      (item.dataPayload && item.dataPayload.toLowerCase().includes(q)) ||
       item.target.toLowerCase().includes(q) ||
       (item.fcmMessageId && item.fcmMessageId.toLowerCase().includes(q))
     );
@@ -329,6 +347,42 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
             Failed
           </button>
         </div>
+
+        {/* Message Type Filter */}
+        <div className="flex items-center space-x-1 text-xs border-l border-slate-200 dark:border-slate-800 pl-3">
+          <button
+            onClick={() => setMessageTypeFilter('')}
+            className={`px-2 py-1 rounded-lg font-medium transition ${
+              messageTypeFilter === ''
+                ? 'text-slate-900 dark:text-white font-bold'
+                : 'text-slate-500'
+            }`}
+          >
+            All Modes
+          </button>
+          <button
+            onClick={() => setMessageTypeFilter('display')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg font-medium transition ${
+              messageTypeFilter === 'display'
+                ? 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 font-semibold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-orange-600'
+            }`}
+          >
+            <Bell className="w-3 h-3" />
+            <span>Display</span>
+          </button>
+          <button
+            onClick={() => setMessageTypeFilter('data-only')}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg font-medium transition ${
+              messageTypeFilter === 'data-only'
+                ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-indigo-600'
+            }`}
+          >
+            <Zap className="w-3 h-3" />
+            <span>Data-Only</span>
+          </button>
+        </div>
       </div>
 
       {/* History Table */}
@@ -399,14 +453,39 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
                       </span>
                     </td>
 
-                    {/* Title & Body */}
+                    {/* Title & Body / Data Payload Preview */}
                     <td className="py-3.5 px-4 max-w-xs">
-                      <div className="font-semibold text-slate-900 dark:text-white truncate">
-                        {item.title}
-                      </div>
-                      <div className="text-slate-500 dark:text-slate-400 truncate text-[11px]">
-                        {item.body}
-                      </div>
+                      {item.messageType === 'data-only' ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-950/80 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              <Zap className="w-2.5 h-2.5" />
+                              DATA-ONLY
+                            </span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                              Silent Push
+                            </span>
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400 truncate bg-slate-50 dark:bg-slate-950/80 px-2 py-0.5 rounded border border-slate-200/50 dark:border-slate-800/50">
+                            {item.dataPayload ? item.dataPayload : '{ no data }'}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-700 dark:bg-orange-950/80 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                              <Bell className="w-2.5 h-2.5" />
+                              DISPLAY
+                            </span>
+                            <span className="font-semibold text-slate-900 dark:text-white truncate">
+                              {item.title || 'Untitled Notification'}
+                            </span>
+                          </div>
+                          <div className="text-slate-500 dark:text-slate-400 truncate text-[11px] pl-1">
+                            {item.body || 'No message body'}
+                          </div>
+                        </div>
+                      )}
                     </td>
 
                     {/* Timestamp */}
@@ -499,11 +578,31 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onCloneToStudio }) => 
                 )}
               </div>
 
-              {/* Target & Time */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl font-mono text-[11px]">
+              {/* Target, Mode & Time */}
+              <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 dark:bg-slate-950 rounded-xl font-mono text-[11px]">
                 <div>
                   <span className="text-slate-400 block mb-0.5">Target ({selectedItem.targetType}):</span>
                   <span className="text-slate-900 dark:text-white break-all">{selectedItem.target}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block mb-0.5">Message Type:</span>
+                  <span className={`inline-flex items-center gap-1 font-semibold px-2 py-0.5 rounded text-[10px] ${
+                    selectedItem.messageType === 'data-only'
+                      ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                      : 'bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300'
+                  }`}>
+                    {selectedItem.messageType === 'data-only' ? (
+                      <>
+                        <Zap className="w-2.5 h-2.5" />
+                        <span>Data-Only</span>
+                      </>
+                    ) : (
+                      <>
+                        <Bell className="w-2.5 h-2.5" />
+                        <span>Display</span>
+                      </>
+                    )}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 block mb-0.5">Dispatched At:</span>

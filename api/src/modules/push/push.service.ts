@@ -6,7 +6,7 @@ import {
   INotificationProvider,
   SendResult,
 } from '../../common/interfaces/notification-provider.interface';
-import { SendPushDto, TargetType } from './dto/send-push.dto';
+import { SendPushDto, TargetType, MessageType } from './dto/send-push.dto';
 
 @Injectable()
 export class PushService implements INotificationProvider {
@@ -44,13 +44,38 @@ export class PushService implements INotificationProvider {
       }
     }
 
+    const messageType = dto.messageType || MessageType.DISPLAY;
+    const isDataOnly = messageType === MessageType.DATA_ONLY;
+
+    // Validate requirements based on messageType
+    if (isDataOnly) {
+      if (!sanitizedData || Object.keys(sanitizedData).length === 0) {
+        throw new BadRequestException(
+          'Data-only push notifications require at least one custom data key-value pair.',
+        );
+      }
+    } else {
+      if (!dto.title?.trim() || !dto.body?.trim()) {
+        throw new BadRequestException(
+          'Display push notifications require both a title and a body.',
+        );
+      }
+    }
+
     // Android configuration
     const androidNotification: admin.messaging.AndroidNotification = {
       ...(dto.android?.channelId ? { channelId: dto.android.channelId } : {}),
       ...(dto.android?.sound ? { sound: dto.android.sound } : {}),
     };
 
-    const androidConfig: admin.messaging.AndroidConfig | undefined = dto.android
+    const androidConfig: admin.messaging.AndroidConfig | undefined = isDataOnly
+      ? {
+          priority: dto.android?.priority === 'normal' ? 'normal' : 'high',
+          ...(Object.keys(androidNotification).length > 0
+            ? { notification: androidNotification }
+            : {}),
+        }
+      : dto.android
       ? {
           priority: dto.android.priority === 'high' ? 'high' : 'normal',
           ...(Object.keys(androidNotification).length > 0
@@ -60,7 +85,21 @@ export class PushService implements INotificationProvider {
       : undefined;
 
     // APNs (iOS) configuration
-    const apnsConfig: admin.messaging.ApnsConfig | undefined = dto.apns
+    const apnsConfig: admin.messaging.ApnsConfig | undefined = isDataOnly
+      ? {
+          headers: {
+            'apns-push-type': 'background',
+            'apns-priority': '5',
+          },
+          payload: {
+            aps: {
+              'content-available': 1,
+              ...(dto.apns?.badge !== undefined ? { badge: dto.apns.badge } : {}),
+              ...(dto.apns?.sound ? { sound: dto.apns.sound } : {}),
+            },
+          },
+        }
+      : dto.apns
       ? {
           payload: {
             aps: {
@@ -72,11 +111,15 @@ export class PushService implements INotificationProvider {
       : undefined;
 
     const baseMessage = {
-      notification: {
-        title: dto.title,
-        body: dto.body,
-        ...(dto.imageUrl ? { imageUrl: dto.imageUrl } : {}),
-      },
+      ...(!isDataOnly
+        ? {
+            notification: {
+              title: dto.title,
+              body: dto.body,
+              ...(dto.imageUrl ? { imageUrl: dto.imageUrl } : {}),
+            },
+          }
+        : {}),
       ...(sanitizedData ? { data: sanitizedData } : {}),
       ...(androidConfig ? { android: androidConfig } : {}),
       ...(apnsConfig ? { apns: apnsConfig } : {}),
@@ -95,17 +138,18 @@ export class PushService implements INotificationProvider {
     };
 
     try {
-      this.logger.log(`Dispatching FCM message to ${dto.targetType}: ${resolvedTarget}`);
+      this.logger.log(`Dispatching FCM [${messageType}] message to ${dto.targetType}: ${resolvedTarget}`);
       const messageId = await messaging.send(message);
       this.logger.log(`FCM Message sent successfully with ID: ${messageId}`);
 
       // Record success to SQLite history
       await this.historyService.create({
+        messageType,
         targetType: dto.targetType,
         target: resolvedTarget,
-        title: dto.title,
-        body: dto.body,
-        imageUrl: dto.imageUrl,
+        title: isDataOnly ? undefined : dto.title,
+        body: isDataOnly ? undefined : dto.body,
+        imageUrl: isDataOnly ? undefined : dto.imageUrl,
         dataPayload: dto.data,
         platformConfig,
         fullPayload: message,
@@ -117,6 +161,7 @@ export class PushService implements INotificationProvider {
       return {
         success: true,
         messageId,
+        messageType,
         targetType: dto.targetType,
         target: resolvedTarget,
         rawResponse: { messageId },
@@ -128,11 +173,12 @@ export class PushService implements INotificationProvider {
 
       // Record failure to SQLite history
       await this.historyService.create({
+        messageType,
         targetType: dto.targetType,
         target: resolvedTarget,
-        title: dto.title,
-        body: dto.body,
-        imageUrl: dto.imageUrl,
+        title: isDataOnly ? undefined : dto.title,
+        body: isDataOnly ? undefined : dto.body,
+        imageUrl: isDataOnly ? undefined : dto.imageUrl,
         dataPayload: dto.data,
         platformConfig,
         fullPayload: message,
@@ -143,6 +189,7 @@ export class PushService implements INotificationProvider {
 
       return {
         success: false,
+        messageType,
         targetType: dto.targetType,
         target: resolvedTarget,
         error: `[${fcmErrorCode}] ${errorMessage}`,

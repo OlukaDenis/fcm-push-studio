@@ -4,10 +4,11 @@ import { Repository } from 'typeorm';
 import { NotificationHistory } from './entities/notification-history.entity';
 
 export interface CreateHistoryDto {
+  messageType?: 'display' | 'data-only';
   targetType: 'token' | 'topic' | 'broadcast';
   target: string;
-  title: string;
-  body: string;
+  title?: string;
+  body?: string;
   imageUrl?: string;
   dataPayload?: any;
   platformConfig?: any;
@@ -30,10 +31,11 @@ export class HistoryService {
   async create(data: CreateHistoryDto): Promise<NotificationHistory> {
     try {
       const record = this.historyRepo.create({
+        messageType: data.messageType || 'display',
         targetType: data.targetType,
         target: data.target,
-        title: data.title,
-        body: data.body,
+        title: data.title || undefined,
+        body: data.body || undefined,
         imageUrl: data.imageUrl || undefined,
         dataPayload: data.dataPayload ? JSON.stringify(data.dataPayload) : undefined,
         platformConfig: data.platformConfig ? JSON.stringify(data.platformConfig) : undefined,
@@ -51,7 +53,13 @@ export class HistoryService {
     }
   }
 
-  async findAll(limit = 50, offset = 0, targetType?: string, status?: string): Promise<{ items: NotificationHistory[]; total: number }> {
+  async findAll(
+    limit = 50,
+    offset = 0,
+    targetType?: string,
+    status?: string,
+    messageType?: string,
+  ): Promise<{ items: NotificationHistory[]; total: number }> {
     const query = this.historyRepo.createQueryBuilder('h');
 
     if (targetType) {
@@ -60,6 +68,10 @@ export class HistoryService {
 
     if (status) {
       query.andWhere('h.status = :status', { status });
+    }
+
+    if (messageType) {
+      query.andWhere('h.messageType = :messageType', { messageType });
     }
 
     query.orderBy('h.createdAt', 'DESC');

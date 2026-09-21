@@ -19,12 +19,14 @@ export class HistoryController {
     @Query('offset') offset = '0',
     @Query('targetType') targetType?: string,
     @Query('status') status?: string,
+    @Query('messageType') messageType?: string,
   ) {
     return this.historyService.findAll(
       parseInt(limit, 10) || 50,
       parseInt(offset, 10) || 0,
       targetType,
       status,
+      messageType,
     );
   }
 

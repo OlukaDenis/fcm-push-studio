@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { FirebaseStatus } from '../../types';
 import { uploadFirebaseCredentials, disconnectFirebase } from '../../services/api';
+import { useToast } from '../../context/ToastContext';
 
 interface ServiceAccountManagerProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
   onStatusUpdated,
   onOpenGuide,
 }) => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'upload' | 'paste'>('upload');
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,18 +49,21 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
   const copyText = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(key);
+    toast.info('Copied to clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
   const handleJsonUpload = async (parsed: any) => {
     if (!parsed || typeof parsed !== 'object') {
-      throw new Error('File does not contain a valid JSON object.');
+      const msg = 'File does not contain a valid JSON object.';
+      toast.error('Invalid JSON', msg);
+      throw new Error(msg);
     }
 
     if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
-      throw new Error(
-        'Invalid Service Account: Missing required fields (project_id, client_email, or private_key).',
-      );
+      const msg = 'Invalid Service Account: Missing required fields (project_id, client_email, or private_key).';
+      toast.error('Validation Error', msg);
+      throw new Error(msg);
     }
 
     setIsProcessing(true);
@@ -69,11 +74,12 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
       const newStatus = await uploadFirebaseCredentials(parsed);
       onStatusUpdated(newStatus);
       setSuccessMsg(`Successfully connected to Firebase Project: ${newStatus.projectId}`);
+      toast.success('Firebase Connected', `Project: ${newStatus.projectId}`);
       setJsonInput('');
     } catch (err: any) {
-      setErrorMsg(
-        err.response?.data?.message || err.message || 'Failed to upload service account',
-      );
+      const msg = err.response?.data?.message || err.message || 'Failed to upload service account';
+      setErrorMsg(msg);
+      toast.error('Upload Failed', msg);
     } finally {
       setIsProcessing(false);
     }
@@ -81,7 +87,9 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
 
   const processFile = (file: File) => {
     if (!file.name.endsWith('.json') && file.type !== 'application/json') {
-      setErrorMsg('Please upload a valid .json service account file.');
+      const msg = 'Please upload a valid .json service account file.';
+      setErrorMsg(msg);
+      toast.error('Invalid File', msg);
       return;
     }
 
@@ -92,7 +100,9 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
         const parsed = JSON.parse(content);
         await handleJsonUpload(parsed);
       } catch (err: any) {
-        setErrorMsg('Failed to parse JSON file. Ensure it is a valid Google Service Account key.');
+        const msg = 'Failed to parse JSON file. Ensure it is a valid Google Service Account key.';
+        setErrorMsg(msg);
+        toast.error('Parse Error', msg);
       }
     };
     reader.readAsText(file);
@@ -125,6 +135,7 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
     e.preventDefault();
     if (!jsonInput.trim()) {
       setErrorMsg('Please paste your service account JSON.');
+      toast.error('Input Required', 'Please paste your service account JSON.');
       return;
     }
 
@@ -132,7 +143,9 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
       const parsed = JSON.parse(jsonInput.trim());
       await handleJsonUpload(parsed);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Invalid JSON format. Check syntax and try again.');
+      const msg = err.message || 'Invalid JSON format. Check syntax and try again.';
+      setErrorMsg(msg);
+      toast.error('Invalid JSON', msg);
     }
   };
 
@@ -150,8 +163,11 @@ export const ServiceAccountManager: React.FC<ServiceAccountManagerProps> = ({
       const newStatus = await disconnectFirebase();
       onStatusUpdated(newStatus);
       setSuccessMsg('Service account disconnected.');
+      toast.info('Firebase Disconnected', 'Active service account removed');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to disconnect');
+      const msg = err.message || 'Failed to disconnect';
+      setErrorMsg(msg);
+      toast.error('Disconnect Failed', msg);
     } finally {
       setIsProcessing(false);
     }

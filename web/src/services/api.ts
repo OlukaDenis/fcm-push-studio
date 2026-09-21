@@ -65,6 +65,7 @@ export const getHistory = async (params?: {
   offset?: number;
   targetType?: string;
   status?: string;
+  messageType?: string;
 }): Promise<{ items: NotificationHistoryItem[]; total: number }> => {
   const res = await api.get<{ items: NotificationHistoryItem[]; total: number }>(
     '/history',

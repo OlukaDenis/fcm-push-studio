@@ -10,8 +10,10 @@ import {
 } from 'lucide-react';
 import { subscribeTopic, unsubscribeTopic } from '../../services/api';
 import { TopicOperationResult } from '../../types';
+import { useToast } from '../../context/ToastContext';
 
 export const TopicManager: React.FC = () => {
+  const toast = useToast();
   const [topic, setTopic] = useState('');
   const [tokenInput, setTokenInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,11 +30,15 @@ export const TopicManager: React.FC = () => {
   const handleAction = async (action: 'subscribe' | 'unsubscribe') => {
     const tokens = parseTokens();
     if (!topic.trim()) {
-      setErrorMsg('Please specify a topic name.');
+      const msg = 'Please specify a topic name.';
+      setErrorMsg(msg);
+      toast.error(msg, 'Missing Topic');
       return;
     }
     if (tokens.length === 0) {
-      setErrorMsg('Please enter at least one FCM device token.');
+      const msg = 'Please enter at least one FCM device token.';
+      setErrorMsg(msg);
+      toast.error(msg, 'Missing Tokens');
       return;
     }
 
@@ -52,12 +58,26 @@ export const TopicManager: React.FC = () => {
           : await unsubscribeTopic(payload);
 
       setResult(res);
+      if (res.success) {
+        toast.success(
+          action === 'subscribe'
+            ? `Subscribed ${res.successCount} token(s) to topic "${topic.trim()}"`
+            : `Unsubscribed ${res.successCount} token(s) from topic "${topic.trim()}"`,
+          action === 'subscribe' ? 'Subscription Complete' : 'Unsubscription Complete',
+        );
+        if (res.failureCount > 0) {
+          toast.info(`${res.failureCount} token(s) failed. Check details below.`, 'Partial Result');
+        }
+      } else {
+        toast.error(`Operation failed on topic "${topic.trim()}"`, 'Topic Error');
+      }
     } catch (err: any) {
-      setErrorMsg(
+      const errText =
         err.response?.data?.message ||
-          err.message ||
-          `Failed to ${action} tokens to topic`,
-      );
+        err.message ||
+        `Failed to ${action} tokens to topic`;
+      setErrorMsg(errText);
+      toast.error(errText, 'Topic Operation Failed');
     } finally {
       setIsLoading(false);
     }
